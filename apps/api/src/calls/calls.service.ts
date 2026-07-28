@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateCallDto, FinishCallDto } from './dto/call.dto';
+import { CreateCallDto, FinishCallDto, UpdateCallDto } from './dto/call.dto';
 
 @Injectable()
 export class CallsService {
@@ -16,6 +16,12 @@ export class CallsService {
     const call = await this.prisma.call.findFirst({ where: { id, ownerId } });
     if (!call) throw new NotFoundException('Llamada no encontrada');
     return this.prisma.call.update({ where: { id }, data: { endedAt: new Date(), outcome: dto.outcome, notes: dto.notes ?? '', durationSeconds: dto.durationSeconds ?? call.durationSeconds } });
+  }
+
+  async update(ownerId: string, id: string, dto: UpdateCallDto) {
+    const call = await this.prisma.call.findFirst({ where: { id, ownerId } });
+    if (!call) throw new NotFoundException('Llamada no encontrada');
+    return this.prisma.call.update({ where: { id }, data: { notes: dto.notes ?? call.notes, durationSeconds: dto.durationSeconds ?? call.durationSeconds } });
   }
 
   findAll(ownerId: string) {

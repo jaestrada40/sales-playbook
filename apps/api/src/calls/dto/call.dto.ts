@@ -26,3 +26,14 @@ export class FinishCallDto {
   @Min(0)
   durationSeconds?: number;
 }
+
+export class UpdateCallDto {
+  @IsOptional()
+  @IsString()
+  notes?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  durationSeconds?: number;
+}

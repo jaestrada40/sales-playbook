@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   ViewMode, 
   UserProfile, 
@@ -27,7 +27,11 @@ import { PlaybookEditorScreen } from './components/PlaybookEditorScreen';
 import { KnowledgeBaseScreen } from './components/KnowledgeBaseScreen';
 import { UxDecisionsModal } from './components/UxDecisionsModal';
 import { CallResultModal } from './components/CallResultModal';
-import { finishCall, getPlaybooks, startCall, type ApiPlaybook } from './api';
+import { finishCall, getCalls, getPlaybooks, startCall, updateCall, type ApiCall, type ApiPlaybook } from './api';
+
+const savedSession = (() => {
+  try { return JSON.parse(localStorage.getItem('sales-playbook-session') ?? 'null') as { user: UserProfile; accessToken: string } | null; } catch { return null; }
+})();
 
 function mapApiPlaybook(playbook: ApiPlaybook): Playbook {
   const stageMap: Record<string, string> = {
@@ -61,9 +65,14 @@ function mapApiPlaybook(playbook: ApiPlaybook): Playbook {
   };
 }
 
+function mapApiCall(call: ApiCall): CallLog {
+  const outcomes: Record<string, CallOutcome> = { no_contesto: 'no_contesto', no_interesado: 'no_interesado', seguimiento: 'seguimiento', interesado: 'interesado', cita_agendada: 'cita_agendada' };
+  return { id: call.id, prospectName: call.prospectName, businessName: call.businessName, phone: '', durationSeconds: call.durationSeconds, timestamp: new Date(call.createdAt).toLocaleString(), outcome: outcomes[call.outcome ?? ''] ?? 'seguimiento', playbookTitle: call.playbook.title, notes: call.notes, dealValueEstimate: 0 };
+}
+
 export default function App() {
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
-  const [accessToken, setAccessToken] = useState('');
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(savedSession?.user ?? null);
+  const [accessToken, setAccessToken] = useState(savedSession?.accessToken ?? '');
   const [currentView, setCurrentView] = useState<ViewMode>('call-assistant'); // Start directly on Call Assistant as requested!
   const [playbooks, setPlaybooks] = useState<Playbook[]>(INITIAL_PLAYBOOKS);
   const [activePlaybook, setActivePlaybook] = useState<Playbook>(INITIAL_PLAYBOOKS[0]);
@@ -105,6 +114,7 @@ export default function App() {
   const handleLoginSuccess = async (user: UserProfile, token = '') => {
     setCurrentUser(user);
     setAccessToken(token);
+    if (token) localStorage.setItem('sales-playbook-session', JSON.stringify({ user, accessToken: token }));
     if (token) try {
       const apiPlaybooks = await getPlaybooks(token);
       const mapped = apiPlaybooks.map(mapApiPlaybook);
@@ -113,7 +123,21 @@ export default function App() {
     } catch (error) {
       console.error('No se pudieron cargar los playbooks', error);
     }
+    try { setRecentCalls((await getCalls(token)).map(mapApiCall)); } catch { /* Dashboard conserva el estado local. */ }
   };
+
+  useEffect(() => {
+    if (!accessToken) return;
+    void getPlaybooks(accessToken).then((items) => {
+      const mapped = items.map(mapApiPlaybook);
+      setPlaybooks(mapped);
+      if (mapped[0]) setActivePlaybook(mapped[0]);
+    }).catch(() => {
+      localStorage.removeItem('sales-playbook-session');
+      setCurrentUser(null);
+    });
+    void getCalls(accessToken).then((items) => setRecentCalls(items.map(mapApiCall))).catch(() => undefined);
+  }, [accessToken]);
 
   // Handlers
   const handleStartNewCall = async (playbook = activePlaybook) => {
@@ -253,6 +277,8 @@ export default function App() {
                 user={currentUser}
                 activeCall={activeCall}
                 playbook={activePlaybook}
+                backendCallId={backendCallId}
+                onSaveNotes={(notes, duration) => { if (backendCallId && accessToken) void updateCall(accessToken, backendCallId, notes, duration); }}
                 onUpdateCall={(updated) => setActiveCall(updated)}
                 onEndCallWithOutcome={handleEndCallTrigger}
                 onOpenCmdK={() => setIsCmdKOpen(true)}

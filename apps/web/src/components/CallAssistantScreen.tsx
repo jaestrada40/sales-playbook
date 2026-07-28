@@ -46,6 +46,8 @@ interface CallAssistantScreenProps {
   onEndCallWithOutcome: (outcome: CallOutcome, notes: string) => void;
   onOpenCmdK: () => void;
   playbook?: Playbook;
+  backendCallId?: string;
+  onSaveNotes?: (notes: string, durationSeconds: number) => void;
 }
 
 export const CallAssistantScreen: React.FC<CallAssistantScreenProps> = ({
@@ -55,8 +57,11 @@ export const CallAssistantScreen: React.FC<CallAssistantScreenProps> = ({
   onEndCallWithOutcome,
   onOpenCmdK,
   playbook,
+  backendCallId,
+  onSaveNotes,
 }) => {
   const [currentStageId, setCurrentStageId] = useState<CallStageId>(activeCall.currentStageId);
+  const [currentNodeIndex, setCurrentNodeIndex] = useState(0);
   const [showAlternative, setShowAlternative] = useState(false);
   const [selectedObjectionId, setSelectedObjectionId] = useState<string | null>(null);
   const [copiedQuestion, setCopiedQuestion] = useState(false);
@@ -80,17 +85,19 @@ export const CallAssistantScreen: React.FC<CallAssistantScreenProps> = ({
           script: first.script,
           suggestedQuestion: first.suggestedQuestion,
           alternativeScript: nodes[1]?.script,
+          nodes,
           quickObjections: [
             ...nodes.filter((node) => node.id !== first.id && node.stageId === 'objeciones').map((node) => ({ id: node.id, trigger: node.title, responseScript: node.script, suggestedQuestion: node.suggestedQuestion })),
             ...(first.branches ?? []).map((branch) => ({ id: branch.targetNodeId, trigger: branch.customerResponse, responseScript: 'Continúa con el siguiente paso recomendado.', suggestedQuestion: '' })),
           ],
         };
       })
-    : PLAYBOOK_STAGES;
+    : PLAYBOOK_STAGES.map((stage) => ({ ...stage, nodes: [{ script: stage.script, suggestedQuestion: stage.suggestedQuestion }] }));
 
   // Stage lookup: real playbook nodes when one is selected, mock stages only as fallback.
   const currentStage = runtimeStages.find((s) => s.id === currentStageId) || runtimeStages[0];
   const stageIndex = runtimeStages.findIndex((s) => s.id === currentStageId);
+  const currentNode = currentStage.nodes[Math.min(currentNodeIndex, currentStage.nodes.length - 1)];
 
   // Timer interval for call duration
   useEffect(() => {
@@ -104,6 +111,12 @@ export const CallAssistantScreen: React.FC<CallAssistantScreenProps> = ({
     return () => clearInterval(interval);
   }, [activeCall, isPaused, onUpdateCall]);
 
+  useEffect(() => {
+    if (!backendCallId || !onSaveNotes) return;
+    const timer = setTimeout(() => onSaveNotes(activeCall.notes, activeCall.elapsedSeconds), 700);
+    return () => clearTimeout(timer);
+  }, [activeCall.notes, backendCallId, onSaveNotes]);
+
   const formatTimer = (sec: number) => {
     const mins = Math.floor(sec / 60);
     const secs = sec % 60;
@@ -111,9 +124,17 @@ export const CallAssistantScreen: React.FC<CallAssistantScreenProps> = ({
   };
 
   const handleNextStage = () => {
+    if (currentNodeIndex < currentStage.nodes.length - 1) {
+      setCurrentNodeIndex((index) => index + 1);
+      setShowAlternative(false);
+      setSelectedObjectionId(null);
+      setFeedbackRating(null);
+      return;
+    }
     if (stageIndex < runtimeStages.length - 1) {
       const nextId = runtimeStages[stageIndex + 1].id;
       setCurrentStageId(nextId);
+      setCurrentNodeIndex(0);
       setShowAlternative(false);
       setSelectedObjectionId(null);
       setFeedbackRating(null);
@@ -129,9 +150,15 @@ export const CallAssistantScreen: React.FC<CallAssistantScreenProps> = ({
   };
 
   const handlePrevStage = () => {
+    if (currentNodeIndex > 0) {
+      setCurrentNodeIndex((index) => index - 1);
+      setSelectedObjectionId(null);
+      return;
+    }
     if (stageIndex > 0) {
-      const prevId = PLAYBOOK_STAGES[stageIndex - 1].id;
+      const prevId = runtimeStages[stageIndex - 1].id;
       setCurrentStageId(prevId);
+      setCurrentNodeIndex(runtimeStages[stageIndex - 1].nodes.length - 1);
       setShowAlternative(false);
       setSelectedObjectionId(null);
       setFeedbackRating(null);
@@ -150,11 +177,11 @@ export const CallAssistantScreen: React.FC<CallAssistantScreenProps> = ({
     ? currentObjection.responseScript
     : showAlternative && currentStage.alternativeScript
     ? currentStage.alternativeScript
-    : currentStage.script;
+    : currentNode.script;
 
   const displayQuestion = currentObjection
     ? currentObjection.suggestedQuestion
-    : currentStage.suggestedQuestion;
+    : currentNode.suggestedQuestion;
 
   return (
     <div className="space-y-4 pb-12 animate-fade-in">
@@ -295,6 +322,7 @@ export const CallAssistantScreen: React.FC<CallAssistantScreenProps> = ({
                   key={stage.id}
                   onClick={() => {
                     setCurrentStageId(stage.id);
+                    setCurrentNodeIndex(0);
                     setShowAlternative(false);
                     setSelectedObjectionId(null);
                   }}

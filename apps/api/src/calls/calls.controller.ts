@@ -1,6 +1,6 @@
-import { Body, Controller, Get, Param, Post, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard, type AuthenticatedRequest } from '../auth/jwt-auth.guard';
-import { CreateCallDto, FinishCallDto } from './dto/call.dto';
+import { CreateCallDto, FinishCallDto, UpdateCallDto } from './dto/call.dto';
 import { CallsService } from './calls.service';
 
 @Controller('calls')
@@ -16,4 +16,7 @@ export class CallsController {
 
   @Post(':id/finish')
   finish(@Request() request: AuthenticatedRequest, @Param('id') id: string, @Body() dto: FinishCallDto) { return this.calls.finish(request.user.sub, id, dto); }
+
+  @Patch(':id')
+  update(@Request() request: AuthenticatedRequest, @Param('id') id: string, @Body() dto: UpdateCallDto) { return this.calls.update(request.user.sub, id, dto); }
 }
