@@ -20,3 +20,5 @@ Thumbs.db
 
 # Local workspace helpers
 .tmp-sheet-review/
+.tmp-design/
+.pnpm-store/
