@@ -27,7 +27,7 @@ import { PlaybookEditorScreen } from './components/PlaybookEditorScreen';
 import { KnowledgeBaseScreen } from './components/KnowledgeBaseScreen';
 import { UxDecisionsModal } from './components/UxDecisionsModal';
 import { CallResultModal } from './components/CallResultModal';
-import { getPlaybooks, type ApiPlaybook } from './api';
+import { finishCall, getPlaybooks, startCall, type ApiPlaybook } from './api';
 
 function mapApiPlaybook(playbook: ApiPlaybook): Playbook {
   const stageMap: Record<string, string> = {
@@ -66,6 +66,8 @@ export default function App() {
   const [accessToken, setAccessToken] = useState('');
   const [currentView, setCurrentView] = useState<ViewMode>('call-assistant'); // Start directly on Call Assistant as requested!
   const [playbooks, setPlaybooks] = useState<Playbook[]>(INITIAL_PLAYBOOKS);
+  const [activePlaybook, setActivePlaybook] = useState<Playbook>(INITIAL_PLAYBOOKS[0]);
+  const [backendCallId, setBackendCallId] = useState('');
   const [kbItems, setKbItems] = useState<KBItem[]>(INITIAL_KB_ITEMS);
   const [recentCalls, setRecentCalls] = useState<CallLog[]>(RECENT_CALL_LOGS);
 
@@ -105,14 +107,17 @@ export default function App() {
     setAccessToken(token);
     if (token) try {
       const apiPlaybooks = await getPlaybooks(token);
-      setPlaybooks(apiPlaybooks.map(mapApiPlaybook));
+      const mapped = apiPlaybooks.map(mapApiPlaybook);
+      setPlaybooks(mapped);
+      if (mapped[0]) setActivePlaybook(mapped[0]);
     } catch (error) {
       console.error('No se pudieron cargar los playbooks', error);
     }
   };
 
   // Handlers
-  const handleStartNewCall = () => {
+  const handleStartNewCall = async (playbook = activePlaybook) => {
+    setActivePlaybook(playbook);
     setActiveCall({
       id: `call-${Date.now()}`,
       prospect: INITIAL_PROSPECT,
@@ -134,6 +139,14 @@ export default function App() {
         cierre: false,
       },
     });
+    if (accessToken) {
+      try {
+        const createdCall = await startCall(accessToken, playbook.id, INITIAL_PROSPECT.contactName, INITIAL_PROSPECT.businessName);
+        setBackendCallId(createdCall.id);
+      } catch (error) {
+        console.error('No se pudo iniciar la llamada en la API', error);
+      }
+    }
     setCurrentView('call-assistant');
   };
 
@@ -143,6 +156,9 @@ export default function App() {
   };
 
   const handleConfirmCallResult = (finalNotes: string, dateStr?: string) => {
+    if (backendCallId && accessToken && pendingOutcome) {
+      void finishCall(accessToken, backendCallId, pendingOutcome, finalNotes, activeCall?.elapsedSeconds ?? 0);
+    }
     if (activeCall && pendingOutcome) {
       const newLog: CallLog = {
         id: `call-log-${Date.now()}`,
@@ -173,6 +189,7 @@ export default function App() {
 
     setIsResultModalOpen(false);
     setActiveCall(null);
+    setBackendCallId('');
     setCurrentView('dashboard');
   };
 
@@ -235,6 +252,7 @@ export default function App() {
               <CallAssistantScreen
                 user={currentUser}
                 activeCall={activeCall}
+                playbook={activePlaybook}
                 onUpdateCall={(updated) => setActiveCall(updated)}
                 onEndCallWithOutcome={handleEndCallTrigger}
                 onOpenCmdK={() => setIsCmdKOpen(true)}
@@ -267,7 +285,7 @@ export default function App() {
             <PlaybookLibraryScreen
               playbooks={playbooks}
               onSelectPlaybook={(pb) => {
-                handleStartNewCall();
+                void handleStartNewCall(pb);
               }}
               onEditPlaybook={(pb) => {
                 setSelectedPlaybookForEditor(pb);
@@ -286,7 +304,7 @@ export default function App() {
               playbook={selectedPlaybookForEditor}
               onSavePlaybook={handleSavePlaybook}
               onPreviewPlaybook={(pb) => {
-                handleStartNewCall();
+                void handleStartNewCall(pb);
               }}
             />
           )}

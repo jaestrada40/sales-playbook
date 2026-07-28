@@ -6,6 +6,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { PlaybooksModule } from './playbooks/playbooks.module';
+import { CallsModule } from './calls/calls.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { PlaybooksModule } from './playbooks/playbooks.module';
     PrismaModule,
     AuthModule,
     PlaybooksModule,
+    CallsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

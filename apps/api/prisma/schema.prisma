@@ -36,6 +36,7 @@ model User {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   playbooks    Playbook[]
+  calls        Call[]
 }
 
 model Playbook {
@@ -51,6 +52,7 @@ model Playbook {
   sections    PlaybookSection[]
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
+  calls       Call[]
 
   @@index([ownerId, status])
 }
@@ -90,4 +92,22 @@ model NodeBranch {
   targetNode     PlaybookNode @relation("targetNode", fields: [targetNodeId], references: [id], onDelete: Cascade)
 
   @@index([sourceNodeId])
+}
+
+model Call {
+  id             String   @id @default(cuid())
+  ownerId        String
+  owner          User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  playbookId     String
+  playbook       Playbook @relation(fields: [playbookId], references: [id], onDelete: Restrict)
+  prospectName   String   @default("")
+  businessName   String   @default("")
+  startedAt      DateTime @default(now())
+  endedAt        DateTime?
+  durationSeconds Int     @default(0)
+  outcome        String?
+  notes          String   @default("")
+  createdAt      DateTime @default(now())
+
+  @@index([ownerId, createdAt])
 }

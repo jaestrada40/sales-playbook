@@ -28,3 +28,11 @@ export function login(email: string, password: string) {
 export function getPlaybooks(accessToken: string) {
   return request<ApiPlaybook[]>('/playbooks', { headers: { Authorization: `Bearer ${accessToken}` } });
 }
+
+export function startCall(accessToken: string, playbookId: string, prospectName: string, businessName: string) {
+  return request<{ id: string }>('/calls', { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ playbookId, prospectName, businessName }) });
+}
+
+export function finishCall(accessToken: string, callId: string, outcome: string, notes: string, durationSeconds: number) {
+  return request('/calls/' + callId + '/finish', { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ outcome, notes, durationSeconds }) });
+}

@@ -34,7 +34,8 @@ import {
   ActiveCall, 
   CallStageId, 
   CallOutcome, 
-  UserProfile 
+  UserProfile,
+  Playbook,
 } from '../types';
 import { PLAYBOOK_STAGES, SAMPLE_PROSPECTS } from '../data/mockData';
 
@@ -44,6 +45,7 @@ interface CallAssistantScreenProps {
   onUpdateCall: (updated: ActiveCall) => void;
   onEndCallWithOutcome: (outcome: CallOutcome, notes: string) => void;
   onOpenCmdK: () => void;
+  playbook?: Playbook;
 }
 
 export const CallAssistantScreen: React.FC<CallAssistantScreenProps> = ({
@@ -52,6 +54,7 @@ export const CallAssistantScreen: React.FC<CallAssistantScreenProps> = ({
   onUpdateCall,
   onEndCallWithOutcome,
   onOpenCmdK,
+  playbook,
 }) => {
   const [currentStageId, setCurrentStageId] = useState<CallStageId>(activeCall.currentStageId);
   const [showAlternative, setShowAlternative] = useState(false);
@@ -67,9 +70,24 @@ export const CallAssistantScreen: React.FC<CallAssistantScreenProps> = ({
     'Cliente: "Sí, con Banamex las terminales fallan los sábados. ¿Qué opción tienen ustedes?"'
   ]);
 
-  // Stage lookup
-  const currentStage = PLAYBOOK_STAGES.find((s) => s.id === currentStageId) || PLAYBOOK_STAGES[0];
-  const stageIndex = PLAYBOOK_STAGES.findIndex((s) => s.id === currentStageId);
+  const runtimeStages = playbook?.nodes?.length
+    ? Array.from(new Set(playbook.nodes.map((node) => node.stageId))).map((stageId) => {
+        const nodes = playbook.nodes.filter((node) => node.stageId === stageId);
+        const first = nodes[0];
+        return {
+          id: stageId,
+          name: stageId,
+          script: first.script,
+          suggestedQuestion: first.suggestedQuestion,
+          alternativeScript: nodes[1]?.script,
+          quickObjections: nodes.filter((node) => node.id !== first.id && node.stageId === 'objeciones').map((node) => ({ id: node.id, trigger: node.title, responseScript: node.script, suggestedQuestion: node.suggestedQuestion })),
+        };
+      })
+    : PLAYBOOK_STAGES;
+
+  // Stage lookup: real playbook nodes when one is selected, mock stages only as fallback.
+  const currentStage = runtimeStages.find((s) => s.id === currentStageId) || runtimeStages[0];
+  const stageIndex = runtimeStages.findIndex((s) => s.id === currentStageId);
 
   // Timer interval for call duration
   useEffect(() => {
@@ -90,8 +108,8 @@ export const CallAssistantScreen: React.FC<CallAssistantScreenProps> = ({
   };
 
   const handleNextStage = () => {
-    if (stageIndex < PLAYBOOK_STAGES.length - 1) {
-      const nextId = PLAYBOOK_STAGES[stageIndex + 1].id;
+    if (stageIndex < runtimeStages.length - 1) {
+      const nextId = runtimeStages[stageIndex + 1].id;
       setCurrentStageId(nextId);
       setShowAlternative(false);
       setSelectedObjectionId(null);
@@ -260,12 +278,12 @@ export const CallAssistantScreen: React.FC<CallAssistantScreenProps> = ({
               Flujo de Llamada
             </h3>
             <span className="text-[10px] font-bold text-slate-400">
-              Paso {stageIndex + 1} de {PLAYBOOK_STAGES.length}
+              Paso {stageIndex + 1} de {runtimeStages.length}
             </span>
           </div>
 
           <div className="space-y-1.5">
-            {PLAYBOOK_STAGES.map((stage, idx) => {
+            {runtimeStages.map((stage, idx) => {
               const isActive = stage.id === currentStageId;
               const isCompleted = activeCall.stageProgress[stage.id] || idx < stageIndex;
 
@@ -464,7 +482,7 @@ export const CallAssistantScreen: React.FC<CallAssistantScreenProps> = ({
               <button
                 id="copilot-next-step-btn"
                 onClick={handleNextStage}
-                disabled={stageIndex === PLAYBOOK_STAGES.length - 1}
+                disabled={stageIndex === runtimeStages.length - 1}
                 className="w-full sm:w-auto px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-extrabold shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
               >
                 <span>Siguiente paso</span>
