@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sales-playbook-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sales_playbook
+      POSTGRES_USER: sales_playbook
+      POSTGRES_PASSWORD: sales_playbook
+    ports:
+      - "5432:5432"
+    volumes:
+      - sales-playbook-postgres:/var/lib/postgresql/data
+
+volumes:
+  sales-playbook-postgres:

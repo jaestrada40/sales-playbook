@@ -1,21 +1,38 @@
 # Sales Playbook
 
-Asistente de llamadas salientes que guía al vendedor durante cada conversación, registra notas y conserva el conocimiento comercial en playbooks reutilizables.
+Asistente de llamadas que guía al vendedor durante cada conversación y conserva el conocimiento comercial en playbooks reutilizables.
 
-## Objetivo inicial
+## Stack actual
 
-Convertir el flujo de venta de NRS en una experiencia de una sola pantalla: apertura, descubrimiento, propuesta, objeciones, cierre y resultado de la llamada.
+- Frontend: React + Vite + TypeScript + TailwindCSS.
+- Backend: NestJS + Prisma + PostgreSQL + JWT.
+- Infraestructura local: Docker Compose.
 
 ## Componentes
 
-- `apps/web`: PWA Angular para el modo de llamada.
-- `apps/api`: API NestJS para playbooks, flujos, llamadas y notas.
-- `docs`: decisiones, alcance y definición del playbook inicial.
+- `apps/web`: interfaz React del Dashboard, Call Assistant, Playbooks y Knowledge Base.
+- `apps/api`: API NestJS para autenticación y playbooks.
+- `docs`: arquitectura y definición del playbook inicial.
 
-## Principio de producto
+## Desarrollo
 
-Durante una llamada, la siguiente respuesta debe encontrarse en dos clics o menos y sin hacer scroll.
+```powershell
+docker compose up -d postgres
 
-## Estado
+cd apps/api
+Copy-Item .env.example .env
+pnpm install
+pnpm prisma:migrate --name init
+pnpm start:dev
+```
 
-Sprint 0: definición funcional y base técnica.
+En otra terminal:
+
+```powershell
+cd apps/web
+pnpm install
+pnpm start
+```
+
+- Frontend: `http://localhost:4200`
+- API: `http://localhost:3000/api`

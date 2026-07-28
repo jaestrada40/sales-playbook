@@ -1,0 +1,93 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  SELLER
+}
+
+enum PlaybookStatus {
+  DRAFT
+  REVIEW
+  PUBLISHED
+}
+
+enum NodeType {
+  SCRIPT
+  QUESTION
+  ANSWER
+  OBJECTION
+  OUTCOME
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String
+  name         String
+  role         UserRole   @default(SELLER)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  playbooks    Playbook[]
+}
+
+model Playbook {
+  id          String         @id @default(cuid())
+  title       String
+  description String         @default("")
+  language    String         @default("es")
+  industry    String         @default("general")
+  version     String         @default("1.0")
+  status      PlaybookStatus  @default(DRAFT)
+  ownerId     String
+  owner       User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  sections    PlaybookSection[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([ownerId, status])
+}
+
+model PlaybookSection {
+  id         String   @id @default(cuid())
+  playbookId String
+  playbook   Playbook @relation(fields: [playbookId], references: [id], onDelete: Cascade)
+  title      String
+  sortOrder  Int      @default(0)
+  nodes      PlaybookNode[]
+
+  @@index([playbookId, sortOrder])
+}
+
+model PlaybookNode {
+  id               String          @id @default(cuid())
+  sectionId        String
+  section          PlaybookSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  type             NodeType        @default(SCRIPT)
+  title            String
+  script           String          @default("")
+  suggestedQuestion String         @default("")
+  sortOrder        Int             @default(0)
+  branches         NodeBranch[]    @relation("sourceNode")
+  targetBranches   NodeBranch[]    @relation("targetNode")
+
+  @@index([sectionId, sortOrder])
+}
+
+model NodeBranch {
+  id             String      @id @default(cuid())
+  sourceNodeId   String
+  targetNodeId   String
+  customerResponse String
+  sourceNode     PlaybookNode @relation("sourceNode", fields: [sourceNodeId], references: [id], onDelete: Cascade)
+  targetNode     PlaybookNode @relation("targetNode", fields: [targetNodeId], references: [id], onDelete: Cascade)
+
+  @@index([sourceNodeId])
+}
