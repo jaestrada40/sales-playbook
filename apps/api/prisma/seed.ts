@@ -6,6 +6,70 @@ const prisma = new PrismaClient();
 type NodeDefinition = { title: string; script: string; suggestedQuestion?: string; type?: NodeType };
 type SectionDefinition = { title: string; nodes: NodeDefinition[] };
 
+const englishDiscoveryQuestions = [
+  'Is there anything you wish your POS could do?',
+  'How is the service with your current provider?',
+  'What made you choose your current provider?',
+  'Do you have a website or eCommerce store?',
+  'What is the biggest challenge you need to solve right now?',
+  'How are you attracting new clients?',
+  'What is your biggest frustration with your current processor or POS?',
+  'How is that problem affecting your business growth?',
+  'How are you addressing your current roadblocks?',
+  'What do you currently like about your processor?',
+  'Who is involved in the decision-making process?',
+  'What timeline are you considering for a change?',
+  'How do you keep up with your competitors?',
+  'How can I make your business easier?',
+  'Is there something specific you need assistance with today?',
+  'Approximately how much do you process in credit cards each month?',
+  'What features would improve your inventory management?',
+  'Can you describe your current customer?',
+  'How are you managing your business social media?',
+  'What would you like to do that your current register cannot do?',
+  'What would you like your POS system to do?',
+  'Do you know anything about Cash Discount?',
+  'How are you managing your taxes?',
+  'How do you manage timeclock and payroll?',
+  'How do you feel about your current processing fees?',
+  'Do you know how to read your processing statement?',
+  'What solutions do you use for EBT and eWIC?',
+  'How do you like your delivery and terminal experience?',
+  'What dreams do you have for your business and life?',
+].map((question) => ({ title: question, script: question, suggestedQuestion: question, type: NodeType.QUESTION }));
+
+const spanishDiscoveryQuestions = [
+  '¿Hay algo que le gustaría que hiciera su POS?',
+  '¿Cómo es el servicio con su proveedor actual?',
+  '¿Qué lo hizo elegir a su proveedor actual?',
+  '¿Tiene un sitio web o tienda de comercio electrónico?',
+  '¿Cuál es el mayor reto que necesita resolver ahora?',
+  '¿Cómo está consiguiendo nuevos clientes?',
+  '¿Cuál es su mayor frustración con su procesador o POS actual?',
+  '¿Cómo está afectando ese problema al crecimiento de su negocio?',
+  '¿Cómo está resolviendo actualmente sus obstáculos?',
+  '¿Qué es lo que más le gusta de su procesador actual?',
+  '¿Quién participa en la decisión de cambiar?',
+  '¿Qué plazo está considerando para hacer un cambio?',
+  '¿Cómo se mantiene competitivo frente a otros negocios?',
+  '¿Cómo podría facilitarle la operación de su negocio?',
+  '¿Hay algo específico en lo que le gustaría recibir ayuda hoy?',
+  'Aproximadamente, ¿cuánto procesa al mes en ventas con tarjeta?',
+  '¿Qué funciones mejorarían el manejo de su inventario?',
+  '¿Cómo describiría a sus clientes actuales?',
+  '¿Cómo administra las redes sociales de su negocio?',
+  '¿Qué le gustaría hacer que su caja registradora actual no permite?',
+  '¿Qué le gustaría que hiciera su sistema POS?',
+  '¿Conoce el programa de Cash Discount?',
+  '¿Cómo maneja actualmente sus impuestos?',
+  '¿Cómo administra el control de horarios y la nómina?',
+  '¿Qué opina de las comisiones de su proveedor actual?',
+  '¿Sabe cómo leer su estado de cuenta de procesamiento?',
+  '¿Qué solución utiliza para EBT y eWIC?',
+  '¿Qué le parece el funcionamiento de su terminal?',
+  '¿Cuáles son sus metas o sueños para su negocio y su vida?',
+].map((question) => ({ title: question, script: question, suggestedQuestion: question, type: NodeType.QUESTION }));
+
 const englishSections: SectionDefinition[] = [
   {
     title: 'Set the Tone',
@@ -24,6 +88,7 @@ const englishSections: SectionDefinition[] = [
       { title: 'Explore the business', script: 'Understand the operation, growth plans and decision process.', suggestedQuestion: 'What would you like your POS system to do that it does not do today?' },
       { title: 'Understand fees', script: "Clarify the customer's current processing experience and identify hidden fees or contract concerns.", suggestedQuestion: 'How do you feel about the fees your current provider is charging you?' },
       { title: 'Restate and check understanding', script: 'So, it sounds like having the must-haves we discussed is important. Do I have that right?' },
+      ...englishDiscoveryQuestions,
     ],
   },
   {
@@ -80,6 +145,7 @@ const spanishSections: SectionDefinition[] = [
       { title: 'Entender el sistema actual', script: 'Identifique limitaciones, oportunidades y lo que el cliente quiere mejorar.', suggestedQuestion: '¿Qué le gustaría que hiciera su sistema POS?' },
       { title: 'Entender las comisiones', script: 'Explore la experiencia actual con el procesador y las posibles comisiones ocultas.', suggestedQuestion: '¿Qué opina de las comisiones que le cobra su proveedor actual?' },
       { title: 'Confirmar necesidades', script: 'Entonces, lo más importante para usted es resolver esas necesidades. ¿Lo entendí correctamente?' },
+      ...spanishDiscoveryQuestions,
     ],
   },
   {
@@ -120,26 +186,27 @@ const spanishSections: SectionDefinition[] = [
 
 async function createPlaybook(ownerId: string, definition: { title: string; language: string; sections: SectionDefinition[] }) {
   const existing = await prisma.playbook.findFirst({ where: { ownerId, title: definition.title } });
-  if (existing) return existing;
-  return prisma.playbook.create({
-    data: {
-      ownerId,
-      title: definition.title,
-      description: 'Flujo estructurado a partir del archivo Copy of Outbound NRS SELLER.xlsx.',
-      language: definition.language,
-      industry: 'general',
-      version: '1.0',
-      status: PlaybookStatus.PUBLISHED,
-      sections: {
-        create: definition.sections.map((section, sectionIndex) => ({
-          title: section.title,
-          sortOrder: sectionIndex,
-          nodes: { create: section.nodes.map((node, nodeIndex) => ({ ...node, suggestedQuestion: node.suggestedQuestion ?? '', type: node.type ?? NodeType.SCRIPT, sortOrder: nodeIndex })) },
-        })),
-      },
-    },
-    include: { sections: { include: { nodes: true } } },
+  const sections = {
+    create: definition.sections.map((section, sectionIndex) => ({
+      title: section.title,
+      sortOrder: sectionIndex,
+      nodes: { create: section.nodes.map((node, nodeIndex) => ({ ...node, suggestedQuestion: node.suggestedQuestion ?? '', type: node.type ?? NodeType.SCRIPT, sortOrder: nodeIndex })) },
+    })),
+  };
+  if (existing) {
+    await prisma.playbookSection.deleteMany({ where: { playbookId: existing.id } });
+    return prisma.playbook.update({ where: { id: existing.id }, data: { language: definition.language, version: '1.1', status: PlaybookStatus.PUBLISHED, sections }, include: { sections: { include: { nodes: true } } } });
+  }
+  return prisma.playbook.create({ data: { ownerId, title: definition.title, description: 'Flujo estructurado a partir del archivo Copy of Outbound NRS SELLER.xlsx.', language: definition.language, industry: 'general', version: '1.0', status: PlaybookStatus.PUBLISHED, sections }, include: { sections: { include: { nodes: true } } } });
+}
+
+async function createFlowBranches(playbook: { sections: Array<{ nodes: Array<{ id: string }> }> }) {
+  const branches = playbook.sections.slice(0, -1).flatMap((section, index) => {
+    const source = section.nodes.at(-1);
+    const target = playbook.sections[index + 1]?.nodes[0];
+    return source && target ? [{ sourceNodeId: source.id, targetNodeId: target.id, customerResponse: 'Cliente acepta continuar' }] : [];
   });
+  if (branches.length) await prisma.nodeBranch.createMany({ data: branches });
 }
 
 async function main() {
@@ -150,7 +217,9 @@ async function main() {
     create: { email: 'admin@salesplaybook.local', name: 'Sales Playbook Admin', passwordHash, role: 'ADMIN' },
   });
   const english = await createPlaybook(owner.id, { title: 'NRS Seller Call Flow', language: 'en', sections: englishSections });
+  await createFlowBranches(english);
   const spanish = await createPlaybook(owner.id, { title: 'NRS Seller Call Flow — Español', language: 'es', sections: spanishSections });
+  await createFlowBranches(spanish);
   console.log(`Seed complete: ${english.title}, ${spanish.title}`);
 }
 

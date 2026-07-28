@@ -56,7 +56,7 @@ function mapApiPlaybook(playbook: ApiPlaybook): Playbook {
       title: node.title,
       script: node.script,
       suggestedQuestion: node.suggestedQuestion,
-      branches: [],
+      branches: node.branches ?? [],
     }))),
   };
 }

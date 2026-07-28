@@ -10,14 +10,14 @@ export class PlaybooksService {
     return this.prisma.playbook.findMany({
       where: { ownerId },
       orderBy: { updatedAt: 'desc' },
-      include: { sections: { orderBy: { sortOrder: 'asc' }, include: { nodes: { orderBy: { sortOrder: 'asc' } } } } },
+      include: { sections: { orderBy: { sortOrder: 'asc' }, include: { nodes: { orderBy: { sortOrder: 'asc' }, include: { branches: true } } } } },
     });
   }
 
   async findOne(ownerId: string, id: string) {
     const playbook = await this.prisma.playbook.findFirst({
       where: { id, ownerId },
-      include: { sections: { orderBy: { sortOrder: 'asc' }, include: { nodes: { orderBy: { sortOrder: 'asc' } } } } },
+      include: { sections: { orderBy: { sortOrder: 'asc' }, include: { nodes: { orderBy: { sortOrder: 'asc' }, include: { branches: true } } } } },
     });
     if (!playbook) throw new NotFoundException('Playbook no encontrado');
     return playbook;

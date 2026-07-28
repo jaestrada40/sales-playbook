@@ -2,7 +2,7 @@ const API_BASE_URL = 'http://localhost:3000/api';
 
 export type ApiUser = { id: string; email: string; name: string; role: string };
 export type ApiAuthResponse = { user: ApiUser; accessToken: string };
-export type ApiNode = { id: string; title: string; script: string; suggestedQuestion: string; type: string; sortOrder: number };
+export type ApiNode = { id: string; title: string; script: string; suggestedQuestion: string; type: string; sortOrder: number; branches?: { customerResponse: string; targetNodeId: string }[] };
 export type ApiSection = { id: string; title: string; sortOrder: number; nodes: ApiNode[] };
 export type ApiPlaybook = {
   id: string; title: string; description: string; language: string; industry: string;

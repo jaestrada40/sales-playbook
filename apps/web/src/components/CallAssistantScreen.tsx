@@ -80,7 +80,10 @@ export const CallAssistantScreen: React.FC<CallAssistantScreenProps> = ({
           script: first.script,
           suggestedQuestion: first.suggestedQuestion,
           alternativeScript: nodes[1]?.script,
-          quickObjections: nodes.filter((node) => node.id !== first.id && node.stageId === 'objeciones').map((node) => ({ id: node.id, trigger: node.title, responseScript: node.script, suggestedQuestion: node.suggestedQuestion })),
+          quickObjections: [
+            ...nodes.filter((node) => node.id !== first.id && node.stageId === 'objeciones').map((node) => ({ id: node.id, trigger: node.title, responseScript: node.script, suggestedQuestion: node.suggestedQuestion })),
+            ...(first.branches ?? []).map((branch) => ({ id: branch.targetNodeId, trigger: branch.customerResponse, responseScript: 'Continúa con el siguiente paso recomendado.', suggestedQuestion: '' })),
+          ],
         };
       })
     : PLAYBOOK_STAGES;
