@@ -1,0 +1,72 @@
+<main class="call-assistant">
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">NRS PLAYBOOK</p>
+      <h1>Sales Playbook</h1>
+    </div>
+    <div class="call-status">
+      <span [class.running]="isCallRunning()">{{ isCallRunning() ? 'Llamada activa' : 'Lista para llamar' }}</span>
+      <strong>{{ formattedTime() }}</strong>
+      <button class="primary" (click)="startCall()">Iniciar llamada</button>
+    </div>
+  </header>
+
+  <section class="business-card" aria-label="Contacto actual">
+    <div>
+      <span>NEGOCIO</span>
+      <strong>Prospecto de hoy</strong>
+    </div>
+    <div>
+      <span>TELÉFONO</span>
+      <strong>Por cargar</strong>
+    </div>
+    <div>
+      <span>OBJETIVO</span>
+      <strong>Conectar con dueño o gerente</strong>
+    </div>
+  </section>
+
+  <section class="workspace">
+    <nav class="flow" aria-label="Etapas de la llamada">
+      <p class="panel-label">FLUJO DE LLAMADA</p>
+      @for (step of steps; track step.title; let index = $index) {
+        <button [class.active]="activeStepIndex() === index" (click)="selectStep(index)">
+          <span>{{ index + 1 }}</span>{{ step.title }}
+        </button>
+      }
+      <button class="secondary">Objeciones rápidas</button>
+      <button class="secondary">Buscar conocimiento</button>
+    </nav>
+
+    <section class="script" aria-live="polite">
+      <p class="panel-label">QUÉ DECIR AHORA</p>
+      <span class="step-name">{{ activeStep().title }}</span>
+      <h2>{{ activeStep().prompt }}</h2>
+      <p class="helper">{{ activeStep().helper }}</p>
+      <div class="quick-actions">
+        <button (click)="nextStep()">Siguiente paso →</button>
+        <button class="secondary">Ver alternativa</button>
+      </div>
+      <div class="suggestion">
+        <strong>Pregunta rápida</strong>
+        <p>¿Qué procesador utiliza actualmente?</p>
+      </div>
+    </section>
+
+    <aside class="notes">
+      <p class="panel-label">NOTAS DE LLAMADA</p>
+      <label for="notes">Dolor, proveedor, volumen, decisor o siguiente paso</label>
+      <textarea id="notes" [value]="note()" (input)="note.set($any($event.target).value)" placeholder="Ej.: Usa Clover; le preocupan las comisiones; llamar el jueves."></textarea>
+      <p class="note-tip">Usa notas cortas. El sistema las guardará con el resultado de la llamada.</p>
+    </aside>
+  </section>
+
+  <footer class="outcomes">
+    <span>Resultado de la llamada</span>
+    <button (click)="saveOutcome('No contestó')">No contestó</button>
+    <button (click)="saveOutcome('No interesado')">No interesado</button>
+    <button (click)="saveOutcome('Seguimiento')">Seguimiento</button>
+    <button (click)="saveOutcome('Interesado')">Interesado</button>
+    <button class="success" (click)="saveOutcome('Cita')">Cita</button>
+  </footer>
+</main>
