@@ -27,9 +27,43 @@ import { PlaybookEditorScreen } from './components/PlaybookEditorScreen';
 import { KnowledgeBaseScreen } from './components/KnowledgeBaseScreen';
 import { UxDecisionsModal } from './components/UxDecisionsModal';
 import { CallResultModal } from './components/CallResultModal';
+import { getPlaybooks, type ApiPlaybook } from './api';
+
+function mapApiPlaybook(playbook: ApiPlaybook): Playbook {
+  const stageMap: Record<string, string> = {
+    'Set the Tone': 'apertura', Apertura: 'apertura',
+    'Examine Needs': 'necesidades', Descubrimiento: 'descubrimiento',
+    'Leverage Wins': 'propuesta', Propuesta: 'propuesta',
+    'Lock the Sale': 'cierre', Cierre: 'cierre',
+    'Ease Concerns': 'objeciones', Objeciones: 'objeciones',
+    Recap: 'cierre', Recapitulación: 'cierre',
+  };
+  return {
+    id: playbook.id,
+    title: playbook.title,
+    description: playbook.description,
+    version: playbook.version,
+    status: playbook.status === 'PUBLISHED' ? 'publicado' : playbook.status === 'REVIEW' ? 'en_revision' : 'borrador',
+    language: playbook.language === 'es' ? 'Español' as Playbook['language'] : 'Inglés' as Playbook['language'],
+    industry: 'General' as Playbook['industry'],
+    conversionRate: 0,
+    usageCount: 0,
+    updatedAt: playbook.updatedAt,
+    author: 'Sales Playbook',
+    nodes: playbook.sections.flatMap((section) => section.nodes.map((node) => ({
+      id: node.id,
+      stageId: (stageMap[section.title] ?? 'apertura') as Playbook['nodes'][number]['stageId'],
+      title: node.title,
+      script: node.script,
+      suggestedQuestion: node.suggestedQuestion,
+      branches: [],
+    }))),
+  };
+}
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(INITIAL_USER);
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [accessToken, setAccessToken] = useState('');
   const [currentView, setCurrentView] = useState<ViewMode>('call-assistant'); // Start directly on Call Assistant as requested!
   const [playbooks, setPlaybooks] = useState<Playbook[]>(INITIAL_PLAYBOOKS);
   const [kbItems, setKbItems] = useState<KBItem[]>(INITIAL_KB_ITEMS);
@@ -65,6 +99,17 @@ export default function App() {
   const [pendingOutcome, setPendingOutcome] = useState<CallOutcome | null>(null);
   const [selectedPlaybookForEditor, setSelectedPlaybookForEditor] = useState<Playbook | null>(INITIAL_PLAYBOOKS[0]);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  const handleLoginSuccess = async (user: UserProfile, token = '') => {
+    setCurrentUser(user);
+    setAccessToken(token);
+    if (token) try {
+      const apiPlaybooks = await getPlaybooks(token);
+      setPlaybooks(apiPlaybooks.map(mapApiPlaybook));
+    } catch (error) {
+      console.error('No se pudieron cargar los playbooks', error);
+    }
+  };
 
   // Handlers
   const handleStartNewCall = () => {
@@ -141,7 +186,7 @@ export default function App() {
   };
 
   if (!currentUser) {
-    return <LoginScreen onLoginSuccess={(user) => setCurrentUser(user)} />;
+    return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
   }
 
   return (

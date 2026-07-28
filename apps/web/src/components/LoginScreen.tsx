@@ -1,34 +1,41 @@
 import React, { useState } from 'react';
 import { PhoneCall, Lock, Mail, ArrowRight, ShieldCheck, Sparkles, CheckCircle2, KeyRound } from 'lucide-react';
 import { UserProfile } from '../types';
+import { login } from '../api';
 
 interface LoginScreenProps {
-  onLoginSuccess: (user: UserProfile) => void;
+  onLoginSuccess: (user: UserProfile, accessToken?: string) => void;
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
-  const [email, setEmail] = useState('carlos.ruiz@salesplaybook.io');
-  const [password, setPassword] = useState('••••••••••••');
+  const [email, setEmail] = useState('admin@salesplaybook.local');
+  const [password, setPassword] = useState('Password123!');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setTimeout(() => {
+    setError('');
+    try {
+      const response = await login(email, password);
       setIsLoading(false);
       onLoginSuccess({
-        id: 'user-1',
-        name: email.includes('carlos') ? 'Carlos Ruiz' : 'Elena Torres',
-        email,
+        id: response.user.id,
+        name: response.user.name,
+        email: response.user.email,
         avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-        role: 'Vendedor Senior',
-        todayCallsCount: 14,
-        todayMeetingsBooked: 5,
-        conversionRatePercent: 35.7,
-      });
-    }, 600);
+        role: response.user.role === 'ADMIN' ? 'Sales Lead' : 'Vendedor Senior',
+        todayCallsCount: 0,
+        todayMeetingsBooked: 0,
+        conversionRatePercent: 0,
+      }, response.accessToken);
+    } catch (loginError) {
+      setIsLoading(false);
+      setError(loginError instanceof Error ? loginError.message : 'No se pudo iniciar sesión');
+    }
   };
 
   const handleQuickDemo = (roleName: string) => {
@@ -142,6 +149,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         ) : (
           /* Login Form */
           <form onSubmit={handleLogin} className="space-y-4">
+            {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">{error}</p>}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
                 Correo electrónico
