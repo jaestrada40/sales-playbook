@@ -11,6 +11,7 @@ import { PlaybooksModule } from './playbooks/playbooks.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     JwtModule.register({
+      global: true,
       secret: process.env.JWT_SECRET ?? 'sales-playbook-development-secret',
       signOptions: { expiresIn: '8h' },
     }),

@@ -22,3 +22,4 @@ Thumbs.db
 .tmp-sheet-review/
 .tmp-design/
 .pnpm-store/
+.tmp-api*.log
