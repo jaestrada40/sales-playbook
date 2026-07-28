@@ -98,6 +98,11 @@ const englishSections: SectionDefinition[] = [
       { title: 'Feature', script: 'I recommend the NRS Pay solution and the products that meet the needs we identified.' },
       { title: 'Link', script: 'This is a strong fit because it addresses the specific problems you mentioned.' },
       { title: 'Benefit', script: "Explain the benefits using the customer's own must-haves and priorities." },
+      { title: 'Clover path', script: 'If the customer uses Clover, discuss integration, reporting, terminal reliability and a smoother upgrade path.' },
+      { title: 'Square path', script: 'If the customer uses Square, compare support, pricing, deposits and the operational features they need.' },
+      { title: 'EBT and eWIC path', script: 'If EBT or eWIC is important, explain the available acceptance and reporting options.' },
+      { title: 'Cash Discount path', script: 'If Cash Discount is relevant, explain the card service fee and cash discount clearly and compliantly.' },
+      { title: 'Fees objection path', script: 'If fees are the objection, review the statement, identify hidden costs and connect the recommendation to the savings.' },
     ],
   },
   {
@@ -155,6 +160,11 @@ const spanishSections: SectionDefinition[] = [
       { title: 'Presentar la solución', script: 'Le recomiendo la solución NRS Pay y los productos que cubren las necesidades que identificamos.' },
       { title: 'Relacionar', script: 'Es una buena opción para usted porque responde directamente a los problemas que mencionó.' },
       { title: 'Explicar beneficios', script: 'Explique los beneficios usando las prioridades y necesidades del cliente.' },
+      { title: 'Ruta Clover', script: 'Si el cliente usa Clover, hable de integración, reportes, confiabilidad de terminales y una actualización sencilla.' },
+      { title: 'Ruta Square', script: 'Si el cliente usa Square, compare soporte, precios, depósitos y las funciones que necesita.' },
+      { title: 'Ruta EBT y eWIC', script: 'Si EBT o eWIC es importante, explique las opciones de aceptación y reportes disponibles.' },
+      { title: 'Ruta Cash Discount', script: 'Si Cash Discount es relevante, explique claramente el cargo por servicio de tarjeta y el descuento en efectivo.' },
+      { title: 'Ruta objeción de comisiones', script: 'Si la objeción son las comisiones, revise el estado de cuenta, identifique costos ocultos y conecte la recomendación con el ahorro.' },
     ],
   },
   {
@@ -200,12 +210,27 @@ async function createPlaybook(ownerId: string, definition: { title: string; lang
   return prisma.playbook.create({ data: { ownerId, title: definition.title, description: 'Flujo estructurado a partir del archivo Copy of Outbound NRS SELLER.xlsx.', language: definition.language, industry: 'general', version: '1.0', status: PlaybookStatus.PUBLISHED, sections }, include: { sections: { include: { nodes: true } } } });
 }
 
-async function createFlowBranches(playbook: { sections: Array<{ nodes: Array<{ id: string }> }> }) {
+async function createFlowBranches(playbook: { sections: Array<{ nodes: Array<{ id: string; title: string }> }> }) {
   const branches = playbook.sections.slice(0, -1).flatMap((section, index) => {
     const source = section.nodes.at(-1);
     const target = playbook.sections[index + 1]?.nodes[0];
     return source && target ? [{ sourceNodeId: source.id, targetNodeId: target.id, customerResponse: 'Cliente acepta continuar' }] : [];
   });
+  const nodes = playbook.sections.flatMap((section) => section.nodes);
+  const source = nodes.find((node) => node.title === 'Qualify the customer' || node.title === 'Calificar al cliente');
+  const targets = [
+    ['Clover', 'Clover path', 'Ruta Clover'],
+    ['Square', 'Square path', 'Ruta Square'],
+    ['EBT / eWIC', 'EBT and eWIC path', 'Ruta EBT y eWIC'],
+    ['Cash Discount', 'Cash Discount path', 'Ruta Cash Discount'],
+    ['Fees / hidden fees', 'Fees objection path', 'Ruta objeción de comisiones'],
+  ];
+  if (source) {
+    for (const [response, englishTitle, spanishTitle] of targets) {
+      const target = nodes.find((node) => node.title === englishTitle || node.title === spanishTitle);
+      if (target) branches.push({ sourceNodeId: source.id, targetNodeId: target.id, customerResponse: response });
+    }
+  }
   if (branches.length) await prisma.nodeBranch.createMany({ data: branches });
 }
 
