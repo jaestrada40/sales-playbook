@@ -9,6 +9,7 @@ export type ApiPlaybook = {
   version: string; status: string; updatedAt: string; sections: ApiSection[];
 };
 export type ApiCall = { id: string; prospectName: string; businessName: string; durationSeconds: number; createdAt: string; outcome?: string; notes: string; playbook: { title: string } };
+export type ApiKnowledge = { id: string; type: string; title: string; category: string; content: string; language: string; tags: string[]; updatedAt: string };
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -32,6 +33,10 @@ export function getPlaybooks(accessToken: string) {
 
 export function getCalls(accessToken: string) {
   return request<ApiCall[]>('/calls', { headers: { Authorization: `Bearer ${accessToken}` } });
+}
+
+export function getKnowledge(accessToken: string) {
+  return request<ApiKnowledge[]>('/knowledge', { headers: { Authorization: `Bearer ${accessToken}` } });
 }
 
 export function startCall(accessToken: string, playbookId: string, prospectName: string, businessName: string) {

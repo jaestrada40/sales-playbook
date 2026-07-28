@@ -7,6 +7,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { PlaybooksModule } from './playbooks/playbooks.module';
 import { CallsModule } from './calls/calls.module';
+import { KnowledgeModule } from './knowledge/knowledge.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { CallsModule } from './calls/calls.module';
     AuthModule,
     PlaybooksModule,
     CallsModule,
+    KnowledgeModule,
   ],
   controllers: [AppController],
   providers: [AppService],

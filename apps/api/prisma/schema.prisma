@@ -37,6 +37,7 @@ model User {
   updatedAt    DateTime   @updatedAt
   playbooks    Playbook[]
   calls        Call[]
+  knowledgeItems KnowledgeItem[]
 }
 
 model Playbook {
@@ -110,4 +111,20 @@ model Call {
   createdAt      DateTime @default(now())
 
   @@index([ownerId, createdAt])
+}
+
+model KnowledgeItem {
+  id        String   @id @default(cuid())
+  ownerId   String
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  category  String
+  content   String
+  language  String   @default("es")
+  tags      String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId, type])
 }

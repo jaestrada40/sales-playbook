@@ -27,7 +27,7 @@ import { PlaybookEditorScreen } from './components/PlaybookEditorScreen';
 import { KnowledgeBaseScreen } from './components/KnowledgeBaseScreen';
 import { UxDecisionsModal } from './components/UxDecisionsModal';
 import { CallResultModal } from './components/CallResultModal';
-import { finishCall, getCalls, getPlaybooks, startCall, updateCall, type ApiCall, type ApiPlaybook } from './api';
+import { finishCall, getCalls, getKnowledge, getPlaybooks, startCall, updateCall, type ApiCall, type ApiKnowledge, type ApiPlaybook } from './api';
 
 const savedSession = (() => {
   try { return JSON.parse(localStorage.getItem('sales-playbook-session') ?? 'null') as { user: UserProfile; accessToken: string } | null; } catch { return null; }
@@ -68,6 +68,11 @@ function mapApiPlaybook(playbook: ApiPlaybook): Playbook {
 function mapApiCall(call: ApiCall): CallLog {
   const outcomes: Record<string, CallOutcome> = { no_contesto: 'no_contesto', no_interesado: 'no_interesado', seguimiento: 'seguimiento', interesado: 'interesado', cita_agendada: 'cita_agendada' };
   return { id: call.id, prospectName: call.prospectName, businessName: call.businessName, phone: '', durationSeconds: call.durationSeconds, timestamp: new Date(call.createdAt).toLocaleString(), outcome: outcomes[call.outcome ?? ''] ?? 'seguimiento', playbookTitle: call.playbook.title, notes: call.notes, dealValueEstimate: 0 };
+}
+
+function mapApiKnowledge(item: ApiKnowledge): KBItem {
+  const types: Record<string, KBItem['type']> = { faq: 'faq', objecion: 'objecion', producto: 'producto', product: 'producto', script: 'script', caso_real: 'caso_real', nota: 'nota' };
+  return { id: item.id, title: item.title, type: types[item.type] ?? 'nota', category: item.category, content: item.content, keyTakeaway: item.content.slice(0, 140), tags: item.tags, timesUsed: 0 };
 }
 
 export default function App() {
@@ -124,6 +129,7 @@ export default function App() {
       console.error('No se pudieron cargar los playbooks', error);
     }
     try { setRecentCalls((await getCalls(token)).map(mapApiCall)); } catch { /* Dashboard conserva el estado local. */ }
+    try { setKbItems((await getKnowledge(token)).map(mapApiKnowledge)); } catch { /* Knowledge Base conserva el estado local. */ }
   };
 
   useEffect(() => {
@@ -137,6 +143,7 @@ export default function App() {
       setCurrentUser(null);
     });
     void getCalls(accessToken).then((items) => setRecentCalls(items.map(mapApiCall))).catch(() => undefined);
+    void getKnowledge(accessToken).then((items) => setKbItems(items.map(mapApiKnowledge))).catch(() => undefined);
   }, [accessToken]);
 
   // Handlers

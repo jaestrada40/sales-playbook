@@ -234,6 +234,20 @@ async function createFlowBranches(playbook: { sections: Array<{ nodes: Array<{ i
   if (branches.length) await prisma.nodeBranch.createMany({ data: branches });
 }
 
+async function seedKnowledge(ownerId: string) {
+  await prisma.knowledgeItem.deleteMany({ where: { ownerId, category: { in: ['voicemail', 'funding'] } } });
+  await prisma.knowledgeItem.createMany({ data: [
+    { ownerId, type: 'script', category: 'voicemail', language: 'en', title: 'Voicemail — Lower prices', content: 'We can help your business lower payment processing costs with a POS system.', tags: ['prices', 'pos'] },
+    { ownerId, type: 'script', category: 'voicemail', language: 'en', title: 'Voicemail — Growth business', content: 'We help growing businesses improve operations and save money with a POS system.', tags: ['growth', 'pos'] },
+    { ownerId, type: 'script', category: 'voicemail', language: 'en', title: 'Voicemail — Inventory management', content: 'We can help improve inventory management and make your operation easier with a POS system.', tags: ['inventory', 'pos'] },
+    { ownerId, type: 'script', category: 'voicemail', language: 'en', title: 'Voicemail — More profits', content: 'We help businesses improve profits through eCommerce, loyalty, promotions and delivery integrations.', tags: ['profits', 'ecommerce', 'loyalty'] },
+    { ownerId, type: 'script', category: 'voicemail', language: 'es', title: 'Buzón de voz — NRS', content: 'Hola, le habla Lourdes de NRS. Le llamo porque podemos ayudar a su negocio a ahorrar dinero en el procesamiento de pagos con tarjeta. Cuando tenga un momento, por favor devuélvame la llamada al 833-289-2767, extensión 0178. Muchas gracias y que tenga un excelente día.', tags: ['voicemail', 'ahorro'] },
+    { ownerId, type: 'script', category: 'voicemail', language: 'en', title: 'Voicemail — NRS', content: 'Hi, this is Lourdes with NRS. I am calling because we can help your business save money on payment processing. Please call me back at 833-289-2767, extension 0178. Thank you, and have a great day!', tags: ['voicemail', 'savings'] },
+    { ownerId, type: 'product', category: 'funding', language: 'en', title: 'NRS Funding — Seller script', content: 'We help businesses get fast funding with minimal paperwork. Funding can help with expansion, inventory, equipment, renovations, payroll, another location or cash flow. We offer advances from $2,000 up to $500,000, with high approval rates and funding as soon as the next business day. Required documents: last 3 months of payment processor statements and last 3 months of business bank statements.', tags: ['funding', 'cash-flow', 'inventory'] },
+    { ownerId, type: 'product', category: 'funding', language: 'es', title: 'NRS Funding — Guion en español', content: 'Ayudamos a negocios a obtener adelantos en efectivo de manera rápida y sencilla. Puede utilizarse para inventario, equipo, remodelaciones, nómina, otra sucursal o flujo de efectivo. Ofrecemos adelantos desde $2,000 hasta $500,000, con poco papeleo y fondos disponibles desde el siguiente día hábil si califica. Requisitos: últimos 3 meses de estados del procesador y últimos 3 meses de estados bancarios del negocio.', tags: ['financiamiento', 'flujo', 'inventario'] },
+  ] });
+}
+
 async function main() {
   const passwordHash = await bcrypt.hash('Password123!', 12);
   const owner = await prisma.user.upsert({
@@ -245,6 +259,7 @@ async function main() {
   await createFlowBranches(english);
   const spanish = await createPlaybook(owner.id, { title: 'NRS Seller Call Flow — Español', language: 'es', sections: spanishSections });
   await createFlowBranches(spanish);
+  await seedKnowledge(owner.id);
   console.log(`Seed complete: ${english.title}, ${spanish.title}`);
 }
 
