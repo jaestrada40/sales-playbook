@@ -1,0 +1,297 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  SELLER
+}
+
+enum PlaybookStatus {
+  DRAFT
+  REVIEW
+  PUBLISHED
+}
+
+enum NodeType {
+  SCRIPT
+  QUESTION
+  ANSWER
+  OBJECTION
+  OUTCOME
+}
+
+enum ProspectStatus {
+  NEW
+  ASSIGNED
+  CONTACTED
+  QUALIFIED
+  WON
+  LOST
+  DNC
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+}
+
+enum OpportunityStage {
+  DISCOVERY
+  PROPOSAL
+  FOLLOW_UP
+  WON
+  LOST
+}
+
+model User {
+  id                String          @id @default(cuid())
+  email             String          @unique
+  passwordHash      String
+  name              String
+  role              UserRole        @default(SELLER)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  playbooks         Playbook[]
+  calls             Call[]
+  knowledgeItems    KnowledgeItem[]
+  teamId            String?
+  team              Team?           @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  assignedProspects Prospect[]      @relation("ProspectAssignee")
+  managedCampaigns  Campaign[]      @relation("CampaignManager")
+  tasks             CrmTask[]
+  auditLogs         AuditLog[]
+
+  @@index([teamId])
+}
+
+model Team {
+  id        String     @id @default(cuid())
+  name      String
+  users     User[]
+  campaigns Campaign[]
+  createdAt DateTime   @default(now())
+}
+
+model Campaign {
+  id            String         @id @default(cuid())
+  name          String
+  description   String         @default("")
+  direction     String         @default("OUTBOUND")
+  status        CampaignStatus @default(DRAFT)
+  teamId        String
+  team          Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  managerId     String?
+  manager       User?          @relation("CampaignManager", fields: [managerId], references: [id], onDelete: SetNull)
+  playbookId    String?
+  playbook      Playbook?      @relation(fields: [playbookId], references: [id], onDelete: SetNull)
+  prospects     Prospect[]
+  calls         Call[]
+  dailyCallGoal Int            @default(20)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([teamId, status])
+}
+
+model Prospect {
+  id               String         @id @default(cuid())
+  businessName     String
+  contactName      String
+  role             String         @default("")
+  phone            String
+  email            String         @default("")
+  businessType     String         @default("")
+  currentProvider  String         @default("")
+  monthlyVolumeUSD Float          @default(0)
+  terminalCount    Int            @default(0)
+  objective        String         @default("")
+  mainPainPoint    String         @default("")
+  address          String         @default("")
+  tags             String[]
+  status           ProspectStatus @default(NEW)
+  campaignId       String
+  campaign         Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  assigneeId       String?
+  assignee         User?          @relation("ProspectAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  attempts         Int            @default(0)
+  lastContactedAt  DateTime?
+  doNotCall        Boolean        @default(false)
+  consentStatus    String         @default("UNKNOWN")
+  consentAt        DateTime?
+  consentSource    String         @default("")
+  calls            Call[]
+  opportunity      Opportunity?
+  tasks            CrmTask[]
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([campaignId, status])
+  @@index([assigneeId, status])
+  @@index([phone])
+}
+
+model Opportunity {
+  id              String           @id @default(cuid())
+  prospectId      String           @unique
+  prospect        Prospect         @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  stage           OpportunityStage @default(DISCOVERY)
+  estimatedValue  Float            @default(0)
+  expectedCloseAt DateTime?
+  notes           String           @default("")
+  updatedAt       DateTime         @updatedAt
+}
+
+model CrmTask {
+  id          String    @id @default(cuid())
+  title       String
+  dueAt       DateTime
+  completedAt DateTime?
+  ownerId     String
+  owner       User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  prospectId  String?
+  prospect    Prospect? @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@index([ownerId, dueAt])
+}
+
+model ComplianceSettings {
+  id               String   @id @default(cuid())
+  jurisdiction     String   @unique
+  timezone         String   @default("America/New_York")
+  callingStartHour Int      @default(9)
+  callingEndHour   Int      @default(20)
+  retentionDays    Int      @default(365)
+  requireConsent   Boolean  @default(true)
+  recordingEnabled Boolean  @default(false)
+  updatedAt        DateTime @updatedAt
+}
+
+model DncEntry {
+  id        String   @id @default(cuid())
+  phone     String   @unique
+  reason    String
+  source    String   @default("MANUAL")
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String
+  actor      User     @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([actorId, createdAt])
+  @@index([entityType, entityId])
+}
+
+model Playbook {
+  id          String            @id @default(cuid())
+  title       String
+  description String            @default("")
+  language    String            @default("es")
+  industry    String            @default("general")
+  version     String            @default("1.0")
+  status      PlaybookStatus    @default(DRAFT)
+  ownerId     String
+  owner       User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  sections    PlaybookSection[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  calls       Call[]
+  campaigns   Campaign[]
+
+  @@index([ownerId, status])
+}
+
+model PlaybookSection {
+  id         String         @id @default(cuid())
+  playbookId String
+  playbook   Playbook       @relation(fields: [playbookId], references: [id], onDelete: Cascade)
+  title      String
+  sortOrder  Int            @default(0)
+  nodes      PlaybookNode[]
+
+  @@index([playbookId, sortOrder])
+}
+
+model PlaybookNode {
+  id                String          @id @default(cuid())
+  sectionId         String
+  section           PlaybookSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  type              NodeType        @default(SCRIPT)
+  title             String
+  script            String          @default("")
+  suggestedQuestion String          @default("")
+  sortOrder         Int             @default(0)
+  branches          NodeBranch[]    @relation("sourceNode")
+  targetBranches    NodeBranch[]    @relation("targetNode")
+
+  @@index([sectionId, sortOrder])
+}
+
+model NodeBranch {
+  id               String       @id @default(cuid())
+  sourceNodeId     String
+  targetNodeId     String
+  customerResponse String
+  sourceNode       PlaybookNode @relation("sourceNode", fields: [sourceNodeId], references: [id], onDelete: Cascade)
+  targetNode       PlaybookNode @relation("targetNode", fields: [targetNodeId], references: [id], onDelete: Cascade)
+
+  @@index([sourceNodeId])
+}
+
+model Call {
+  id               String    @id @default(cuid())
+  ownerId          String
+  owner            User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  playbookId       String
+  playbook         Playbook  @relation(fields: [playbookId], references: [id], onDelete: Restrict)
+  prospectId       String?
+  prospect         Prospect? @relation(fields: [prospectId], references: [id], onDelete: SetNull)
+  campaignId       String?
+  campaign         Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  consentConfirmed Boolean   @default(false)
+  prospectName     String    @default("")
+  businessName     String    @default("")
+  startedAt        DateTime  @default(now())
+  endedAt          DateTime?
+  durationSeconds  Int       @default(0)
+  outcome          String?
+  followUpAt       DateTime?
+  notes            String    @default("")
+  createdAt        DateTime  @default(now())
+
+  @@index([ownerId, createdAt])
+  @@index([prospectId, createdAt])
+  @@index([campaignId, createdAt])
+}
+
+model KnowledgeItem {
+  id        String   @id @default(cuid())
+  ownerId   String
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  category  String
+  content   String
+  language  String   @default("es")
+  tags      String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId, type])
+}

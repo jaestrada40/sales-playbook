@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+coverage/
+.angular/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# IDE and OS
+.idea/
+.vscode/
+*.user
+*.suo
+Thumbs.db
+
+# Local workspace helpers
+.tmp-sheet-review/
+.tmp-design/
+.pnpm-store/
+.tmp-api*.log
